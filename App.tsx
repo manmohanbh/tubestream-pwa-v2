@@ -6,11 +6,6 @@ import { fetchVideoMetadata, simulateDownload } from './services/mockApi';
 import VideoCard from './components/VideoCard';
 import FormatSelector from './components/FormatSelector';
 
-const LOADING_MESSAGES = ["Waking Engine", "Bypassing Limits", "Scanning HQ", "Ready!"];
-
-const VALID_MP3_BASE64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZTU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=";
-const VALID_MP4_BASE64 = "AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAIdtZGF0AAACogYF//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7//4Te//+E3v//hN7";
-
 const App: React.FC = () => {
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
@@ -22,7 +17,6 @@ const App: React.FC = () => {
   const [showToast, setShowToast] = useState<string | null>(null);
   const [backendUrl, setBackendUrl] = useState<string>(localStorage.getItem('ts_backend_url') || '');
   
-  // Persistence
   useEffect(() => {
     const saved = localStorage.getItem('ts_history');
     if (saved) setHistory(JSON.parse(saved));
@@ -35,8 +29,10 @@ const App: React.FC = () => {
   };
 
   const handleSaveBackend = (val: string) => {
-    setBackendUrl(val);
-    localStorage.setItem('ts_backend_url', val);
+    let cleanUrl = val.trim();
+    if (cleanUrl.endsWith('/')) cleanUrl = cleanUrl.slice(0, -1);
+    setBackendUrl(cleanUrl);
+    localStorage.setItem('ts_backend_url', cleanUrl);
     setShowToast("Backend URL Updated");
     setTimeout(() => setShowToast(null), 2000);
   };
@@ -68,23 +64,19 @@ const App: React.FC = () => {
     setStatus(AppStatus.DOWNLOADING);
 
     if (backendUrl) {
-      // REAL DOWNLOAD LOGIC
       try {
         const downloadEndpoint = `${backendUrl}/download?url=${encodeURIComponent(url)}&format=${format.id}`;
         window.location.href = downloadEndpoint;
-        
-        // Wait a bit to simulate the start
         await new Promise(r => setTimeout(r, 2000));
-        setShowToast("Stream initiated...");
+        setShowToast("Download started via Pro Engine");
       } catch (e) {
-        setError("Backend connection failed. Check your URL.");
+        setError("Backend connection failed. Check your URL in Settings.");
       }
       setDownloadState({ isDownloading: false, progress: 0 });
       setStatus(AppStatus.READY);
     } else {
-      // SIMULATION LOGIC
       await simulateDownload((p) => setDownloadState(prev => ({ ...prev, progress: p })));
-      const base64 = format.isAudioOnly ? VALID_MP3_BASE64 : VALID_MP4_BASE64;
+      const base64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZTU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=";
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -96,7 +88,7 @@ const App: React.FC = () => {
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(dUrl);
-      setShowToast("Demo file saved!");
+      setShowToast("Sandbox demo file saved!");
       setTimeout(() => setShowToast(null), 3000);
       setDownloadState({ isDownloading: false, progress: 0 });
       setStatus(AppStatus.READY);
@@ -111,10 +103,10 @@ const App: React.FC = () => {
           <h1 className="text-xl font-extrabold tracking-tighter">TUBE<span className="text-red-500">STREAM</span></h1>
         </div>
         <div className="flex gap-2">
-           <div className={`px-3 py-1 rounded-full border flex items-center gap-2 ${backendUrl ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800 border-slate-700'}`}>
+           <div className={`px-3 py-1 rounded-full border flex items-center gap-2 transition-all ${backendUrl ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800 border-slate-700'}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${backendUrl ? 'bg-emerald-500 animate-pulse' : 'bg-orange-500'}`}></div>
               <span className={`text-[10px] font-bold uppercase tracking-widest ${backendUrl ? 'text-emerald-400' : 'text-slate-400'}`}>
-                {backendUrl ? 'PRO MODE' : 'SANDBOX'}
+                {backendUrl ? 'PRO ENGINE ACTIVE' : 'SANDBOX MODE'}
               </span>
            </div>
         </div>
@@ -184,30 +176,30 @@ const App: React.FC = () => {
             <h2 className="text-2xl font-bold">System Settings</h2>
             <div className="glass-panel p-6 rounded-3xl space-y-6">
                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-400 uppercase tracking-widest">Backend Connection URL</label>
-                  <p className="text-xs text-slate-500 mb-4">Link your own deployed server to enable real-world downloads.</p>
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-widest">Railway Backend URL</label>
+                  <p className="text-xs text-slate-500 mb-4">Link your deployed Railway server here to enable real downloads.</p>
                   <input 
                     type="text" 
                     value={backendUrl} 
                     onChange={(e) => setBackendUrl(e.target.value)}
-                    placeholder="https://your-backend.railway.app"
+                    placeholder="https://your-backend.up.railway.app"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 px-4 outline-none focus:border-emerald-500 transition-all font-mono text-sm"
                   />
                   <button 
                     onClick={() => handleSaveBackend(backendUrl)}
-                    className="w-full py-4 bg-slate-700 hover:bg-emerald-600 rounded-xl font-bold transition-all mt-2"
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all mt-2 shadow-lg shadow-emerald-600/20"
                   >
-                    Save & Test Connection
+                    Save & Activate Pro Mode
                   </button>
                </div>
                
                <div className="pt-6 border-t border-slate-700">
-                  <h4 className="text-sm font-bold mb-3">Local Data</h4>
+                  <h4 className="text-sm font-bold mb-3 text-slate-400 uppercase tracking-widest">Local Storage</h4>
                   <button 
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
-                    className="text-xs text-red-500 hover:underline"
+                    className="px-4 py-2 border border-red-500/30 text-xs text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
                   >
-                    Clear Cache & History
+                    Clear History & Cache
                   </button>
                </div>
             </div>
@@ -215,34 +207,24 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'help' && (
-          <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto max-h-[70vh] pb-10 pr-2">
-            <h2 className="text-2xl font-bold">Deployment Guide</h2>
-            <div className="space-y-4">
-              <Step number="1" title="Copy Backend Code" desc="Create a folder on your PC, and save the code below as 'server.js'." />
-              <div className="glass-panel p-4 rounded-xl relative">
-                <pre className="text-[10px] font-mono text-slate-400 overflow-x-auto whitespace-pre">
-{`const express = require('express');
-const ytdl = require('ytdl-core');
-const cors = require('cors');
-const app = express();
+          <div className="space-y-6 animate-in fade-in duration-500 overflow-y-auto max-h-[75vh] pb-20 pr-2 custom-scrollbar">
+            <h2 className="text-2xl font-bold">Project Files & Deployment</h2>
+            <p className="text-slate-400 text-sm">The full-stack structure is now ready. You can find the backend files in your project directory.</p>
+            
+            <div className="space-y-8">
+              <section className="space-y-4">
+                <Step number="1" title="Backend Folder Ready" desc="I have created a 'backend/' folder in this project containing 'server.js' and 'package.json'. You can copy these directly to your hosting provider." />
+                
+                <div className="glass-panel p-4 rounded-xl relative bg-emerald-500/5 border-emerald-500/20">
+                   <h5 className="text-[10px] font-black text-emerald-500 uppercase mb-2">Pro Tip</h5>
+                   <p className="text-xs text-slate-300">Zip the <strong>backend/</strong> folder, upload it to GitHub, and link it to Railway.app. No manual coding required!</p>
+                </div>
+              </section>
 
-app.use(cors());
-
-app.get('/download', async (req, res) => {
-  const { url, format } = req.query;
-  try {
-    const info = await ytdl.getInfo(url);
-    res.header('Content-Disposition', 'attachment; filename="video.mp4"');
-    ytdl(url, { quality: format || 'highest' }).pipe(res);
-  } catch (err) { res.status(500).send(err.message); }
-});
-
-app.listen(process.env.PORT || 4000);`}
-                </pre>
-              </div>
-
-              <Step number="2" title="Deploy to Railway.app" desc="Push your folder to GitHub, then link it to Railway or Render. It's free and takes 1 minute." />
-              <Step number="3" title="Paste URL" desc="Go to the Settings tab in this app and paste your new server link (e.g. https://tube-back.up.railway.app)." />
+              <section className="space-y-4">
+                <Step number="2" title="Deploy to Railway" desc="Go to Railway.app, create a new project from your GitHub repo. It will detect 'package.json' automatically." />
+                <Step number="3" title="Link Public URL" desc="Copy the generated domain from Railway and paste it into the 'Settings' tab of this app." />
+              </section>
             </div>
           </div>
         )}
@@ -267,7 +249,7 @@ app.listen(process.env.PORT || 4000);`}
         <div className="fixed bottom-24 left-4 right-4 p-4 glass-panel rounded-2xl z-50 animate-in slide-in-from-bottom duration-300">
            <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-bold text-red-500 uppercase tracking-tighter">
-                {backendUrl ? 'Streaming via Backend...' : `Simulating ${downloadState.currentFormat?.quality}...`}
+                {backendUrl ? 'Streaming via Private Engine...' : `Simulating ${downloadState.currentFormat?.quality}...`}
               </span>
               <span className="font-mono text-xs">{Math.round(downloadState.progress)}%</span>
            </div>
