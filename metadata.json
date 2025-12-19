@@ -1,0 +1,8 @@
+
+{
+  "name": "TubeStream PWA",
+  "description": "High-performance YouTube Video & Shorts downloader with real-time metadata verification and multi-format support.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
